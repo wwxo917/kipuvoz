@@ -1,55 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../core/data/sample_data.dart';
+import '../../core/errors/app_error.dart';
+import '../../core/routes/routes.dart';
+import '../../core/utils/format.dart';
+import '../../data/models/movimiento.dart';
+import '../../providers/movimientos_provider.dart';
+import '../../shared/state_views.dart';
 import '../../shared/widgets.dart';
 
-class HistoryScreen extends StatefulWidget {
+/// HU-05 (criterio 3) / HU-07: historial leído desde Supabase, agrupado por día.
+class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
-  int _filter = 0;
-  static const _labels = ['Todo', 'Ventas', 'Compras', 'Gastos'];
-  static const _types = <MovementType?>[null, MovementType.sale, MovementType.purchase, MovementType.expense];
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
+  int _filtro = 0;
+  static const _etiquetas = ['Todo', 'Ventas', 'Compras', 'Gastos'];
+  static const _tipos = <TipoMovimiento?>[null, TipoMovimiento.venta, TipoMovimiento.compra, TipoMovimiento.gasto];
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final type = _types[_filter];
+    final estado = ref.watch(movimientosProvider);
+    final tipo = _tipos[_filtro];
 
-    // Agrupar por día manteniendo el orden
-    final groups = <String, List<Movement>>{};
-    for (final m in sampleMovements) {
-      if (type == null || m.type == type) groups.putIfAbsent('${m.day} · ${m.date}', () => []).add(m);
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Historial')),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Registrar movimiento',
-        onPressed: () => showSoon(context),
-        child: const Icon(Icons.add),
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 4, 18, 96),
-          children: [
-            ChipFilterRow(labels: _labels, selected: _filter, onSelected: (i) => setState(() => _filter = i)),
-            if (groups.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 48),
-                child: Text('No hay movimientos de este tipo.',
-                    textAlign: TextAlign.center, style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+    List<Widget> contenido() {
+      return estado.when<List<Widget>>(
+        loading: () => const [LoadingView(message: 'Cargando movimientos…')],
+        error: (e, _) => [
+          ErrorView(message: friendlyError(e), onRetry: () => ref.read(movimientosProvider.notifier).cargar()),
+        ],
+        data: (lista) {
+          if (lista.isEmpty) {
+            return [
+              EmptyView(
+                icon: Icons.receipt_long_outlined,
+                title: 'Aún no tienes movimientos',
+                message: 'Toca + para registrar una venta, una compra o un gasto.',
+                actionLabel: 'Registrar movimiento',
+                onAction: () => context.push(Routes.entry),
               ),
-            for (final entry in groups.entries) ...[
+            ];
+          }
+          // Agrupar por día manteniendo el orden (más reciente primero)
+          final grupos = <String, List<Movimiento>>{};
+          for (final m in lista) {
+            if (tipo == null || m.tipo == tipo) {
+              grupos.putIfAbsent(dayTitle(m.fecha), () => <Movimiento>[]).add(m);
+            }
+          }
+          if (grupos.isEmpty) {
+            return const [
+              EmptyView(
+                icon: Icons.filter_alt_off_outlined,
+                title: 'Sin movimientos de este tipo',
+                message: 'Prueba con otro filtro.',
+              ),
+            ];
+          }
+          return [
+            for (final entrada in grupos.entries) ...[
               Padding(
                 padding: const EdgeInsets.only(top: 16, bottom: 6),
                 child: Text(
-                  entry.key,
+                  entrada.key,
                   style: text.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant),
                 ),
               ),
@@ -57,18 +77,37 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Column(
                   children: [
-                    for (var i = 0; i < entry.value.length; i++) ...[
-                      MovementTile(
-                        movement: entry.value[i],
-                        onTap: () => showSoon(context, 'Disponible en el Sprint 3'),
-                      ),
-                      if (i < entry.value.length - 1) const Divider(),
+                    for (var i = 0; i < entrada.value.length; i++) ...[
+                      MovementTile(movimiento: entrada.value[i]),
+                      if (i < entrada.value.length - 1) const Divider(),
                     ],
                   ],
                 ),
               ),
             ],
-          ],
+          ];
+        },
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Historial')),
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Registrar movimiento',
+        onPressed: () => context.push(Routes.entry),
+        child: const Icon(Icons.add, size: 28),
+      ),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () => ref.read(movimientosProvider.notifier).cargar(silencioso: true),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(18, 4, 18, 96),
+            children: [
+              ChipFilterRow(labels: _etiquetas, selected: _filtro, onSelected: (i) => setState(() => _filtro = i)),
+              ...contenido(),
+            ],
+          ),
         ),
       ),
     );

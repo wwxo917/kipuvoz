@@ -81,7 +81,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
               selected: {_index},
               onSelectionChanged: (s) => setState(() => _index = s.first),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
+            Text(
+              'Datos de ejemplo: los reportes se conectan a tus movimientos en el Sprint 3.',
+              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 10),
             HeroCard(
               label: 'Ganancia ${p.caption}',
               value: bs(p.profit),
@@ -118,7 +123,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  Text(p.labels[i], style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
+                                  Text(p.labels[i], style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                                 ],
                               ),
                             ),

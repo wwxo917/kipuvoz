@@ -1,198 +1,132 @@
-# KipuVoz
+# KipuVoz - Proyecto integral del Sprint 2
 
-**Asistente de voz con inteligencia artificial para pequeños comerciantes de Bolivia.**
+KipuVoz es una aplicación Flutter de apoyo a comerciantes de Bolivia. Permite crear una cuenta, configurar el negocio, administrar un inventario y registrar ventas, compras y gastos en Supabase. Fue desarrollado como proyecto académico de aplicaciones móviles I (UPDS), con Scrum.
 
-> *"Habla, y tus cuentas se anotan solas."*
+> Alcance: Sprint 2. Los paneles de resumen de Inicio y Reportes conservan datos demostrativos; el microfono y la confirmacion por voz son una maqueta. **No equivalen a la IA final prevista para Sprint 4.**
 
-KipuVoz es una aplicación móvil desarrollada con **Flutter** que permitirá a tiendas de barrio, puestos de mercado y emprendedores registrar ventas, compras y gastos hablando, controlar su inventario y conocer su ganancia sin llevar cuentas a mano. El nombre hace referencia al *kipu* (quipu), el sistema de cuerdas y nudos que las culturas andinas usaban para llevar cuentas.
+## 1. Abrirlo en Windows (Android Studio)
 
-Proyecto académico desarrollado en la **Universidad Privada Domingo Savio (UPDS)** bajo la metodología **Scrum**.
+**Requisitos**: Android Studio con plugins Flutter y Dart, Flutter SDK 3.27 o superior, Android SDK, emulador Android con internet, Git y cuenta de Supabase. Los comandos deben ejecutarse en la carpeta que contiene `pubspec.yaml`.
 
----
-
-## Estado del proyecto
-
-| Sprint | Enfoque | Estado |
-|---|---|---|
-| **Sprint 1** | Pantallas, diseño y navegación (sin funcionalidad) | ✅ Completado |
-| Sprint 2 | Funcionalidades (registro manual, productos y stock, resúmenes) | ⏳ Pendiente |
-| Sprint 3 | Base de datos local y respaldo en la nube | ⏳ Pendiente |
-| Sprint 4 | Micrófono, API de IA y servicios | ⏳ Pendiente |
-
-> En el Sprint 1 todas las pantallas usan **datos de ejemplo**. Todavía no hay base de datos, voz ni inteligencia artificial.
-
----
-
-## Pantallas del Sprint 1
-
-| Bienvenida | Inicio | Confirmación |
-|---|---|---|
-| ![Bienvenida](docs/screenshots/bienvenida.png) | ![Inicio](docs/screenshots/inicio.png) | ![Confirmación](docs/screenshots/confirmacion.png) |
-
-| Inventario | Historial | Reportes |
-|---|---|---|
-| ![Inventario](docs/screenshots/inventario.png) | ![Historial](docs/screenshots/historial.png) | ![Reportes](docs/screenshots/reportes.png) |
-
-> Las imágenes se guardan en la carpeta `docs/screenshots/`.
-
-### Qué incluye cada pantalla
-
-- **Bienvenida:** logotipo, nombre, eslogan y 3 pantallas deslizables de presentación, con el botón "Comenzar".
-- **Inicio:** ganancia del día, tarjetas de ventas y gastos, botón grande de micrófono y últimos movimientos.
-- **Confirmación:** frase escuchada, lista de ítems (producto, cantidad, precio unitario y subtotal), total y botones Confirmar, Editar y Cancelar.
-- **Inventario:** búsqueda, filtro de stock bajo y lista de productos con indicador de nivel de stock.
-- **Historial:** filtros por tipo y movimientos agrupados por día, con tipo, fecha y monto.
-- **Reportes:** selector Día / Semana / Mes, ganancia, gráfico de barras y productos más vendidos.
-
----
-
-## Tecnologías
-
-| Tecnología | Uso |
-|---|---|
-| [Flutter](https://flutter.dev) y Dart | Framework y lenguaje de la aplicación |
-| Material 3 | Sistema de diseño y tema |
-| [go_router](https://pub.dev/packages/go_router) | Navegación con rutas y pestañas que conservan su estado |
-| Android Studio | Entorno de desarrollo y emulador |
-| Git y GitHub | Control de versiones |
-| Trello | Tablero Kanban del sprint |
-
-**Planificado para sprints posteriores:** Riverpod o Bloc (estado), Isar o Drift (base de datos local), Supabase o Firebase (nube), `speech_to_text` y `flutter_tts` (voz) y una API de IA con un backend intermedio.
-
----
-
-## Requisitos
-
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) **3.27 o superior** (incluye Dart).
-- [Android Studio](https://developer.android.com/studio) con el plugin de Flutter y un emulador Android configurado (o un dispositivo físico).
-- Git.
-
-Verifica tu instalación con:
+1. Descomprime este ZIP y abre la carpeta `kipuvoz` en Android Studio.
+2. Haz doble clic en **`PREPARAR_WINDOWS.bat`**. El script ejecuta `flutter create --project-name kipuvoz --platforms=android,web .` (genera las carpetas Android y Web propias de TU versión de Flutter) y `flutter pub get`, sin reemplazar la carpeta `lib`.
+3. Si aún no existe, el script crea `env.json` desde `env.example.json`. **Edita** `env.json` y coloca la URL del proyecto y su clave **pública** de Supabase. Nunca uses una `service_role` o `sb_secret`.
+4. Prepara las tablas y la autenticación en Supabase segun la seccion 2.
+5. Enciende un emulador desde **Tools > Device Manager** y ejecuta `EJECUTAR_ANDROID.bat`, o en la terminal:
 
 ```bash
-flutter --version
+flutter run --dart-define-from-file=env.json
+```
+
+Para ejecutar en Microsoft Edge:
+
+```bash
+flutter run -d edge --dart-define-from-file=env.json
+```
+
+también puedes editar **Run > Edit Configurations > Additional run args** en Android Studio y agregar `--dart-define-from-file=env.json` para usar el boton Run.
+
+En macOS/Linux, usa `sh preparar_unix.sh`; luego inicia con el mismo comando `flutter run`.
+
+**Por que se generan las carpetas de plataforma**: el ZIP original de Sprint 2 contenia solo el código `lib`, sin `pubspec.yaml` ni los proyectos Android/Web. Este paquete incorpora el archivo de dependencias, scripts y pruebas; `flutter create` genera el código nativo oficial compatible con la versión instalada en tu equipo. No hace falta reutilizar Sprint 1.
+
+## 2. Configurar Supabase
+
+1. Ve a https://supabase.com, crea un proyecto nuevo (puedes elegir la region de Sao Paulo) y abre **SQL Editor**.
+2. **Proyecto NUEVO**: ejecuta `supabase/schema.sql` y despues `supabase/migracion_02_categoria.sql` (en ese orden). No es necesario ejecutar la migracion 03, porque el esquema nuevo ya contiene las mejoras de seguridad.
+3. **Proyecto EXISTENTE basado en el esquema antiguo de Sprint 2**: **NO repitas `schema.sql` ni borres tablas**. Ejecuta `supabase/migracion_02_categoria.sql` si falta la categoría, y despues `supabase/migracion_03_seguridad.sql` para aplicar la correccion de permisos, preservando tus registros. Antes de migrar una base con datos reales, crea un respaldo.
+4. En **Table Editor** comprueba las tablas `negocios`, `productos`, `movimientos`, `movimiento_items` y sus etiquetas **RLS enabled**.
+5. En **Authentication > Providers > Email**, revisa que el proveedor Email este habilitado. Puedes desactivar la confirmacion de correo solo para pruebas o confirmar la cuenta por email si está activada.
+6. En **Project Settings > API** (o **API Keys**) copia `Project URL` y la **publishable key** (o anon key) en `env.json`:
+
+```json
+{
+  "SUPABASE_URL": "https://TU-PROYECTO.supabase.co",
+  "SUPABASE_ANON_KEY": "TU-CLAVE-PUBLICA"
+}
+```
+
+7. En SQL Editor ejecuta **`supabase/verificar_instalacion.sql`**: las 4 tablas deben tener RLS activo y las tres comprobaciones de permisos finales deben dar `false` (no INSERT directo a movimientos/items ni DELETE de productos).
+
+**Datos de prueba opcionales**: `supabase/datos_prueba.sql` necesita que antes exista en Auth el usuario `prueba@kipuvoz.com`, sin negocio ya creado. Genera una tienda y tres movimientos; las existencias resultantes son Arroz 7, Azucar 23, Aceite 23, Fideo 40. No cargues datos de prueba sobre un negocio existente.
+
+## 3. Ejecutar verificaciones en tu computadora
+
+```bash
 flutter doctor
+flutter pub get
+flutter analyze
+flutter test
+flutter run --dart-define-from-file=env.json
 ```
 
----
-
-## Instalación y ejecución
+Para un APK de distribucion, verifica que `android/app/src/main/AndroidManifest.xml` incluya `<uses-permission android:name="android.permission.INTERNET"/>` antes de `<application>`. Despues ejecuta:
 
 ```bash
-# 1. Clonar el repositorio
-git clone <URL-del-repositorio>
-cd kipuvoz
-
-# 2. Descargar las dependencias
-flutter pub get
-
-# 3. Iniciar un emulador Android (o conectar un dispositivo) y ejecutar
-flutter run
+flutter build apk --dart-define-from-file=env.json
 ```
 
-**Credenciales de acceso:** no aplica en el Sprint 1 (la aplicación todavía no tiene inicio de sesión).
+La compilacion no se ejecuta aqui porque este entorno de preparación no tiene Flutter SDK ni acceso a la base Supabase. Los tests, el analisis y la demostracion real deben comprobarse en Android Studio; **no están marcados artificialmente como aprobados**.
 
-### Si partes de un proyecto nuevo
+## 4. Flujo funcional del Sprint 2
 
-```bash
-flutter create kipuvoz
-cd kipuvoz
-flutter pub add go_router
-# Reemplaza la carpeta lib/ por la de este repositorio
-flutter pub get
-flutter run
-```
+1. Bienvenida > Crear cuenta > Configurar negocio (nombre y tipo, moneda Bs).
+2. Inventario > agregar producto con stock, stock mínimo y categoría.
+3. Tocar un producto para editar; Archivar conserva el registro, pero lo oculta del listado.
+4. Inicio > Registrar sin voz: venta, compra o gasto. Una venta resta existencias y una compra las suma.
+5. Historial consulta movimientos almacenados en la nube.
+6. Cerrar sesión e iniciar de nuevo: deben recuperarse el negocio, los productos y el historial.
+7. Con otra cuenta, debe mantenerse el aislamiento de datos (RLS).
 
----
+## 5. Estructura principal
 
-## Navegación
-
-La app usa `go_router`. Las cuatro pestañas principales se definen con `StatefulShellRoute`, por lo que cada una conserva su estado al cambiar de pestaña.
-
-| Ruta | Pantalla | Cómo se accede |
-|---|---|---|
-| `/welcome` | Bienvenida | Al abrir la aplicación |
-| `/home` | Inicio | Botón "Comenzar" o pestaña Inicio |
-| `/confirmation` | Confirmación | Botón de micrófono en Inicio |
-| `/inventory` | Inventario | Pestaña Inventario |
-| `/history` | Historial | Pestaña Historial |
-| `/reports` | Reportes | Pestaña Reportes |
-
-**Reglas de navegación:**
-
-- La barra inferior se muestra en las 4 pestañas y se oculta en Bienvenida y Confirmación.
-- El botón atrás desde cualquier pestaña regresa a Inicio; desde Inicio, sale de la aplicación.
-- En Confirmación, "Confirmar y guardar" y "Cancelar" regresan a Inicio.
-
----
-
-## Diseño
-
-Tema único basado en la paleta **Kipu**, inspirada en los colores de Bolivia:
-
-| Uso | Color | Código |
-|---|---|---|
-| Primario | Verde profundo | `#1B5E3F` |
-| Acento y micrófono | Ámbar | `#F2A900` |
-| Alerta y stock bajo | Rojo | `#C62828` |
-| Fondo | Crema claro | `#FAF7F0` |
-| Texto principal | Gris casi negro | `#1F2933` |
-
-**Criterios de usabilidad aplicados:** zonas táctiles de al menos 48 dp (micrófono de 88 dp), contraste de texto de al menos 4.5:1, estados comunicados con color, texto y forma, y acciones principales al alcance del pulgar. El diseño se basa en las heurísticas de Nielsen y en las guías de accesibilidad de Material Design.
-
----
-
-## Estructura del proyecto
-
-```
+```text
 kipuvoz/
-├── android/ · ios/            # Proyectos nativos generados por Flutter
-├── test/                      # Pruebas automatizadas
-├── pubspec.yaml               # Dependencias y configuración
-└── lib/
-    ├── main.dart              # Punto de entrada de la aplicación
-    ├── core/
-    │   ├── theme/             # Colores y tema Material 3
-    │   ├── routes/            # Rutas y configuración de go_router
-    │   ├── utils/             # Utilidades (formato de montos en Bs)
-    │   └── data/              # Datos de ejemplo
-    ├── shared/                # Widgets reutilizables y barra de navegación inferior
-    └── features/
-        ├── welcome/           # Bienvenida
-        ├── home/              # Inicio
-        ├── confirmation/      # Confirmación de registro
-        ├── inventory/         # Inventario
-        ├── history/           # Historial
-        └── reports/           # Reportes
+  lib/
+    main.dart                Arranque y Supabase
+    core/                   Tema, rutas, validación, errores y utilidades
+    data/models/            Negocio, Producto, Movimiento
+    data/repositories/      Acceso a datos y autenticación
+    providers/              Estado reactivo con Riverpod
+    features/               Pantallas de la aplicación
+    shared/                 Widgets reutilizables
+  supabase/                 Esquema, migraciones y comprobaciones SQL
+  test/                     Pruebas de formato, validación, modelo y UI básica
+  docs/                     documentación para el equipo y el docente
+  pubspec.yaml              Dependencias y versión del proyecto
+  env.example.json          Plantilla de configuración
+  PREPARAR_WINDOWS.bat       preparación automatizada en Windows
 ```
 
----
+## 6. Historial de cambios respecto del paquete recibido
 
-## Flujo de trabajo con Git
+- Se agregaron `pubspec.yaml`, `.gitignore`, pruebas de Flutter, herramientas de preparación, documentación y un flujo CI opcional.
+- El código ya existente de las pantallas, modelos, temas y repositorios se conserva como base.
+- Se mejoro el tratamiento de errores de red sin importar `dart:io` directamente (compatibilidad con Web).
+- Los providers descartan respuestas asincronas que pertenezcan a una sesión anterior.
+- La funcion SQL `registrar_movimiento` valida los valores, confirma el producto y el negocio, y actualiza el stock en una transacción; se deshabilito el INSERT financiero directo para clientes autenticados.
+- Se corrigio la carga de datos de prueba para que el stock coincida con las operaciones de ejemplo.
 
-- `main`: versión estable (se actualiza al cerrar cada sprint).
-- `develop`: integración del trabajo del sprint.
-- `feature/nombre-de-la-tarea`: una rama por tarea o pantalla.
-- Los cambios se integran mediante **Pull Requests** revisados por al menos otro integrante.
-- Mensajes de commit descriptivos, por ejemplo: `feat: agrega pantalla de bienvenida`.
+## 7. Problemas habituales
 
----
-
-## Equipo
-
-| Integrante | Rol |
+| síntoma | Revision sugerida |
 |---|---|
-| Lic. Rosalia Lopez M. | Product Owner |
-| Jorge Mercado Yepez | Scrum Master y desarrollador |
-| Henry Maydana Vallejos | Desarrollador |
-| Adrian Vargas Vega | Desarrollador |
-| Jonathan Cordon Iglesias | Desarrollador |
+| `flutter` no se reconoce | Instala Flutter y reinicia Android Studio o la terminal. |
+| No existe `android/` | Ejecuta `PREPARAR_WINDOWS.bat` o `flutter create --project-name kipuvoz --platforms=android,web .`. |
+| Falta configurar Supabase | Comprueba `env.json`, su ubicacion y el argumento `--dart-define-from-file=env.json`. |
+| No hay internet / Network error | Revisa emulador, URL y estado del proyecto Supabase. |
+| Faltan las tablas | Ejecuta `schema.sql` solamente en un proyecto nuevo. |
+| Falta categoría | Ejecuta `migracion_02_categoria.sql`. |
+| No permite borrar registros | Es intencional: la regla de negocio es archivar, no borrar. |
+| `widget_test.dart` falla | Asegurate de usar el archivo de pruebas incluido en este paquete. |
 
-**Universidad:** Universidad Privada Domingo Savio (UPDS)
-**Materia / Docente:** _completar_
+## documentación
 
----
+- `docs/Guia_tecnica_y_pruebas_KipuVoz.docx`: manual preparado para explicar, instalar y validar el sprint.
+- `docs/PLAN_PRUEBAS.md`: seguimiento de las 49 pruebas del documento original.
+- `docs/ARQUITECTURA_Y_SEGURIDAD.md`: componentes, rutas, modelo de datos y decisiones de seguridad.
+- `docs/ESTADO_DE_VALIDACION.md`: lo que se verifico y lo que falta ejecutar en el emulador.
+- `docs/Documento_original_Sprint2_KipuVoz.docx`: informe de 59 paginas recibido, sin alteraciones.
+- `docs/Guia_original_companero.md` y `docs/README_original_companero.md`: instrucciones originales como referencia.
 
-## Licencia
-
-Proyecto con fines académicos.
+Proyecto académico UPDS. No se incluyen credenciales reales.

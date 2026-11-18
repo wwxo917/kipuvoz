@@ -1,17 +1,91 @@
 import 'package:flutter/material.dart';
 
-import '../core/data/sample_data.dart';
+import '../core/theme/app_colors.dart';
 import '../core/utils/format.dart';
+import '../data/models/movimiento.dart';
 
-/// Color suave (fondo de íconos y chips) a partir de un color de la paleta.
+/// Color suave (fondo de íconos y chips) a partir de un color del tema.
 Color tintOf(BuildContext context, Color color, [double alpha = 0.14]) =>
     Color.alphaBlend(color.withValues(alpha: alpha), Theme.of(context).colorScheme.surface);
 
-/// Aviso para funciones que llegan en sprints posteriores.
-void showSoon(BuildContext context, [String message = 'Disponible en el Sprint 2']) {
+/// Mensaje breve (confirmación o error) en la parte inferior.
+void showMessage(BuildContext context, String message, {bool error = false}) {
+  final scheme = Theme.of(context).colorScheme;
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message), behavior: SnackBarBehavior.floating));
+    ..showSnackBar(SnackBar(
+      content: Text(message, style: TextStyle(fontSize: 14, color: error ? scheme.onError : null)),
+      backgroundColor: error ? scheme.error : null,
+      behavior: SnackBarBehavior.floating,
+    ));
+}
+
+/// Aviso para funciones que llegan en sprints posteriores.
+void showSoon(BuildContext context, [String message = 'Disponible en un sprint posterior']) =>
+    showMessage(context, message);
+
+/// Diálogo de confirmación (por ejemplo, antes de archivar o cerrar sesión).
+Future<bool> confirmar(
+  BuildContext context, {
+  required String titulo,
+  required String mensaje,
+  required String accion,
+  bool peligro = false,
+}) async {
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(titulo),
+      content: Text(mensaje),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
+        TextButton(
+          style: peligro ? TextButton.styleFrom(foregroundColor: Theme.of(ctx).colorScheme.error) : null,
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(accion),
+        ),
+      ],
+    ),
+  );
+  return result ?? false;
+}
+
+/// Decoración común de los campos de formulario (FB-04: con texto de ayuda).
+InputDecoration appInput({
+  String? label,
+  String? helper,
+  String? hint,
+  String? error,
+  Widget? prefix,
+  Widget? suffix,
+  String? prefixText,
+}) {
+  OutlineInputBorder border(Color color, [double width = 1]) => OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: color, width: width),
+      );
+  return InputDecoration(
+    labelText: label,
+    helperText: helper,
+    helperMaxLines: 2,
+    hintText: hint,
+    errorText: error,
+    errorMaxLines: 2,
+    prefixIcon: prefix,
+    suffixIcon: suffix,
+    prefixText: prefixText,
+    filled: true,
+    fillColor: AppColors.surface,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    border: border(AppColors.line),
+    enabledBorder: border(AppColors.line),
+    focusedBorder: border(AppColors.primary, 2),
+    errorBorder: border(AppColors.alert),
+    focusedErrorBorder: border(AppColors.alert, 2),
+    labelStyle: const TextStyle(color: AppColors.muted, fontSize: 16),
+    helperStyle: const TextStyle(color: AppColors.muted, fontSize: 14),
+    errorStyle: const TextStyle(color: AppColors.alert, fontSize: 14, fontWeight: FontWeight.w600),
+  );
 }
 
 class AppCard extends StatelessWidget {
@@ -49,7 +123,8 @@ class IconBadge extends StatelessWidget {
         color: tintOf(context, color, color == Theme.of(context).colorScheme.secondary ? 0.28 : 0.14),
         borderRadius: BorderRadius.circular(size / 3),
       ),
-      child: Icon(icon, size: size * 0.5, color: iconColor ?? color),
+      // FB-02: íconos de al menos 24 dp
+      child: Icon(icon, size: size * 0.6, color: iconColor ?? color),
     );
   }
 }
@@ -70,11 +145,12 @@ class SectionTitle extends StatelessWidget {
 }
 
 class HeroCard extends StatelessWidget {
-  const HeroCard({super.key, required this.label, required this.value, required this.chip});
+  const HeroCard({super.key, required this.label, required this.value, required this.chip, this.valueSize = 36});
 
   final String label;
   final String value;
   final String chip;
+  final double valueSize;
 
   @override
   Widget build(BuildContext context) {
@@ -94,9 +170,12 @@ class HeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: text.bodyMedium?.copyWith(color: scheme.onPrimary.withValues(alpha: 0.85))),
+          Text(label, style: text.bodyMedium?.copyWith(color: scheme.onPrimary.withValues(alpha: 0.9))),
           const SizedBox(height: 2),
-          Text(value, style: text.displaySmall?.copyWith(fontWeight: FontWeight.w800, color: scheme.onPrimary)),
+          Text(
+            value,
+            style: text.displaySmall?.copyWith(fontSize: valueSize, fontWeight: FontWeight.w800, color: scheme.onPrimary),
+          ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -129,7 +208,7 @@ class StatCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            IconBadge(icon: icon, color: color, size: 32),
+            IconBadge(icon: icon, color: color, size: 40),
             const SizedBox(width: 8),
             Text(label, style: text.bodySmall?.copyWith(color: muted)),
           ]),
@@ -141,10 +220,11 @@ class StatCard extends StatelessWidget {
   }
 }
 
+/// Movimiento del historial: ingresos y gastos se distinguen por color, ícono y signo (FB-01).
 class MovementTile extends StatelessWidget {
-  const MovementTile({super.key, required this.movement, this.onTap});
+  const MovementTile({super.key, required this.movimiento, this.onTap});
 
-  final Movement movement;
+  final Movimiento movimiento;
   final VoidCallback? onTap;
 
   @override
@@ -152,24 +232,32 @@ class MovementTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    final (Color bg, Color fg, IconData icon) = switch (movement.type) {
-      MovementType.sale => (scheme.primary, scheme.primary, Icons.north_east),
-      MovementType.expense => (scheme.error, scheme.error, Icons.south_west),
-      MovementType.purchase => (scheme.secondary, scheme.onSurface, Icons.shopping_bag_outlined),
+    final (Color bg, Color fg, IconData icon) = switch (movimiento.tipo) {
+      TipoMovimiento.venta => (scheme.primary, scheme.primary, Icons.north_east),
+      TipoMovimiento.gasto => (scheme.error, scheme.error, Icons.south_west),
+      TipoMovimiento.compra => (scheme.secondary, scheme.onSurface, Icons.shopping_bag_outlined),
     };
-    final isSale = movement.type == MovementType.sale;
-    final amount = isSale ? bs(movement.amount, sign: true) : bs(-movement.amount);
+    final esVenta = movimiento.tipo == TipoMovimiento.venta;
+    final monto = esVenta ? bs(movimiento.total, sign: true) : bs(-movimiento.total);
+    final anulado = movimiento.anulado ? ' · Anulado' : '';
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
       onTap: onTap,
       leading: IconBadge(icon: icon, color: bg, iconColor: fg),
-      title: Text(movement.items, style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-      subtitle: Text('${movement.type.label} · ${movement.date} · ${movement.time}',
-          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+      title: Text(
+        movimiento.detalle,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        '${movimiento.tipo.etiqueta} · ${dateLabel(movimiento.fecha)} · ${timeLabel(movimiento.fecha)}$anulado',
+        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+      ),
       trailing: Text(
-        amount,
-        style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: isSale ? scheme.primary : scheme.error),
+        monto,
+        style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: esVenta ? scheme.primary : scheme.error),
       ),
     );
   }
@@ -226,7 +314,7 @@ class ChipFilterRow extends StatelessWidget {
             label: Text(
               labels[i],
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: i == selected ? FontWeight.w700 : FontWeight.w600,
                 color: i == selected ? scheme.primary : scheme.onSurfaceVariant,
               ),

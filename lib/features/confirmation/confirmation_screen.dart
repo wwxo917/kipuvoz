@@ -118,7 +118,7 @@ class ConfirmationScreen extends StatelessWidget {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => showSoon(context),
+                          onPressed: () => showSoon(context, 'Disponible en el Sprint 4'),
                           child: const Text('Editar'),
                         ),
                       ),
@@ -167,14 +167,13 @@ class _Cells extends StatelessWidget {
           flex: flex,
           child: Text(
             value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             textAlign: right ? TextAlign.right : TextAlign.left,
             style: style,
           ),
         );
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         cell(product, 5),
         cell(quantity, 5),

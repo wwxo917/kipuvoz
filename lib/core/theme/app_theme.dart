@@ -24,7 +24,12 @@ class AppTheme {
     );
 
     final base = ThemeData(useMaterial3: true, colorScheme: scheme);
-    final textTheme = base.textTheme.apply(bodyColor: AppColors.text, displayColor: AppColors.text);
+    final applied = base.textTheme.apply(bodyColor: AppColors.text, displayColor: AppColors.text);
+    // FB-02: ningún texto de contenido menor a 14 sp.
+    final textTheme = applied.copyWith(
+      bodySmall: applied.bodySmall?.copyWith(fontSize: 14),
+      labelMedium: applied.labelMedium?.copyWith(fontSize: 14),
+    );
     const radius16 = BorderRadius.all(Radius.circular(16));
 
     return base.copyWith(
@@ -50,14 +55,14 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: const Size.fromHeight(56),
           shape: const RoundedRectangleBorder(borderRadius: radius16),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: const Size.fromHeight(56),
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.primary, width: 2),
           shape: const RoundedRectangleBorder(borderRadius: radius16),
@@ -97,7 +102,7 @@ class AppTheme {
         selectedColor: scheme.primaryContainer,
         side: const BorderSide(color: AppColors.line),
         shape: const StadiumBorder(),
-        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.muted),
+        labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.muted),
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: SegmentedButton.styleFrom(

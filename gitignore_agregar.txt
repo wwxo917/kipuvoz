@@ -1,0 +1,2 @@
+# Agrega estas líneas al final del .gitignore de tu proyecto:
+env.json

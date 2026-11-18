@@ -1,60 +1,105 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../core/data/sample_data.dart';
+import '../../core/errors/app_error.dart';
+import '../../core/routes/routes.dart';
+import '../../core/utils/format.dart';
+import '../../data/models/producto.dart';
+import '../../providers/productos_provider.dart';
+import '../../shared/state_views.dart';
 import '../../shared/widgets.dart';
 
-class InventoryScreen extends StatefulWidget {
+/// HU-07 / HU-08 / HU-09: inventario conectado a Supabase (READ), con alta (CREATE) y edición (UPDATE).
+class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
 
   @override
-  State<InventoryScreen> createState() => _InventoryScreenState();
+  ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
 }
 
-class _InventoryScreenState extends State<InventoryScreen> {
-  int _filter = 0;
-  static const _labels = ['Todos', 'Stock bajo'];
+class _InventoryScreenState extends ConsumerState<InventoryScreen> {
+  String _busqueda = '';
+  int _filtro = 0; // 0 todos, 1 stock bajo, 2+ categorías
+
+  List<Producto> _aplicarFiltros(List<Producto> todos) {
+    return todos.where((p) {
+      if (_busqueda.isNotEmpty && !p.nombre.toLowerCase().contains(_busqueda.toLowerCase())) return false;
+      if (_filtro == 1) return p.stockBajo;
+      if (_filtro >= 2) return p.categoria == Producto.categorias[_filtro - 2];
+      return true;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    final items = sampleProducts.where((p) => _filter == 0 || p.low).toList();
+    final estado = ref.watch(productosProvider);
+    final todos = estado.hasValue ? estado.requireValue : const <Producto>[];
+    final bajos = todos.where((p) => p.stockBajo).length;
+    final etiquetas = ['Todos', 'Stock bajo · $bajos', ...Producto.categorias];
+
+    List<Widget> contenido() {
+      return estado.when<List<Widget>>(
+        loading: () => const [LoadingView(message: 'Cargando productos…')],
+        error: (e, _) => [
+          ErrorView(message: friendlyError(e), onRetry: () => ref.read(productosProvider.notifier).cargar()),
+        ],
+        data: (lista) {
+          if (lista.isEmpty) {
+            return [
+              EmptyView(
+                icon: Icons.inventory_2_outlined,
+                title: 'Aún no tienes productos',
+                message: 'Toca + para agregar uno.',
+                actionLabel: 'Agregar producto',
+                onAction: () => context.push(Routes.productNew),
+              ),
+            ];
+          }
+          final visibles = _aplicarFiltros(lista);
+          if (visibles.isEmpty) {
+            return const [
+              EmptyView(
+                icon: Icons.search_off,
+                title: 'Sin resultados',
+                message: 'No hay productos con esos filtros.',
+              ),
+            ];
+          }
+          return [for (final p in visibles) _ProductCard(producto: p)];
+        },
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Inventario')),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Agregar producto',
-        onPressed: () => showSoon(context),
-        child: const Icon(Icons.add),
+        onPressed: () => context.push(Routes.productNew),
+        child: const Icon(Icons.add, size: 28),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 4, 18, 96),
-          children: [
-            SearchBar(
-              hintText: 'Buscar producto',
-              leading: const Icon(Icons.search),
-              constraints: const BoxConstraints(minHeight: 52),
-              elevation: const WidgetStatePropertyAll(0),
-              backgroundColor: WidgetStatePropertyAll(scheme.surface),
-              side: WidgetStatePropertyAll(BorderSide(color: scheme.outline)),
-              shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-            ),
-            const SizedBox(height: 12),
-            ChipFilterRow(labels: _labels, selected: _filter, onSelected: (i) => setState(() => _filter = i)),
-            const SizedBox(height: 12),
-            if (items.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 48),
-                child: Text('No hay productos con stock bajo.',
-                    textAlign: TextAlign.center, style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+        child: RefreshIndicator(
+          onRefresh: () => ref.read(productosProvider.notifier).cargar(silencioso: true),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(18, 4, 18, 96),
+            children: [
+              TextField(
+                onChanged: (v) => setState(() => _busqueda = v.trim()),
+                textInputAction: TextInputAction.search,
+                decoration: appInput(
+                  hint: 'Buscar producto',
+                  prefix: Icon(Icons.search, color: scheme.onSurfaceVariant),
+                ),
               ),
-            for (final p in items)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _ProductCard(product: p),
-              ),
-          ],
+              const SizedBox(height: 12),
+              ChipFilterRow(labels: etiquetas, selected: _filtro, onSelected: (i) => setState(() => _filtro = i)),
+              const SizedBox(height: 12),
+              ...contenido(),
+            ],
+          ),
         ),
       ),
     );
@@ -62,55 +107,69 @@ class _InventoryScreenState extends State<InventoryScreen> {
 }
 
 class _ProductCard extends StatelessWidget {
-  const _ProductCard({required this.product});
+  const _ProductCard({required this.producto});
 
-  final Product product;
+  final Producto producto;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final low = product.low;
-    final accentColor = low ? scheme.error : scheme.onSurface;
+    final bajo = producto.stockBajo;
+    final nivel = producto.stockMinimo <= 0
+        ? (producto.stock > 0 ? 1.0 : 0.0)
+        : (producto.stock / (producto.stockMinimo * 4)).clamp(0.0, 1.0);
+    final subtitulo = bajo
+        ? 'Stock bajo · mínimo ${qty(producto.stockMinimo)} ${producto.unidadPara(producto.stockMinimo)}'
+        : producto.precioLabel;
 
-    return AppCard(
-      onTap: () => showSoon(context),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              IconBadge(
-                icon: Icons.shopping_bag_outlined,
-                color: low ? scheme.error : scheme.secondary,
-                iconColor: low ? scheme.error : scheme.onSurface,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(product.name, style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
-                    Text(
-                      low ? product.note : product.price,
-                      style: text.bodySmall?.copyWith(color: low ? scheme.error : scheme.onSurfaceVariant),
-                    ),
-                  ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AppCard(
+        onTap: () => context.push(Routes.productEdit(producto.id)),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                IconBadge(
+                  icon: Icons.shopping_bag_outlined,
+                  color: bajo ? scheme.error : scheme.secondary,
+                  iconColor: bajo ? scheme.error : scheme.onSurface,
                 ),
-              ),
-              Text(product.stock, style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: accentColor)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: product.level,
-              minHeight: 6,
-              backgroundColor: scheme.outline,
-              color: low ? scheme.error : scheme.primary,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(producto.nombre, style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(
+                        subtitulo,
+                        style: text.bodySmall?.copyWith(color: bajo ? scheme.error : scheme.onSurfaceVariant),
+                      ),
+                      if (producto.categoria != null)
+                        Text(producto.categoria!, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  producto.stockLabel,
+                  style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: bajo ? scheme.error : scheme.onSurface),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: nivel,
+                minHeight: 6,
+                backgroundColor: scheme.outline,
+                color: bajo ? scheme.error : scheme.primary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

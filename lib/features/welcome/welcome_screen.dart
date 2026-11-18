@@ -91,7 +91,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     backgroundColor: scheme.secondary,
                     foregroundColor: scheme.onSecondary,
                   ),
-                  onPressed: () => context.go(Routes.home),
+                  onPressed: () => context.go(Routes.login),
                   child: const Text('Comenzar'),
                 ),
                 const SizedBox(height: 24),
