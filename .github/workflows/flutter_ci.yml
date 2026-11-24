@@ -1,0 +1,24 @@
+name: Flutter / Verificacion automatica
+on:
+  push:
+  pull_request:
+jobs:
+  analizar_y_probar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.4'
+          channel: stable
+          cache: true
+      - name: Completar archivos de plataforma
+        run: flutter create --project-name kipuvoz --platforms=android,web .
+      - name: Dependencias
+        run: flutter pub get
+      - name: Analisis estatico
+        run: flutter analyze
+      - name: Pruebas unitarias y widgets
+        run: flutter test
+      - name: Compilacion web (sin credenciales reales)
+        run: flutter build web --dart-define-from-file=env.example.json
