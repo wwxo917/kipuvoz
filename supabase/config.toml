@@ -1,0 +1,4 @@
+# El JWT se valida explícitamente dentro de la función con auth.getUser(token).
+# Compatible con claves publishable nuevas y anon heredadas.
+[functions.interpretar-comando]
+verify_jwt = false

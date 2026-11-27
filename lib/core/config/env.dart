@@ -1,0 +1,10 @@
+/// Claves de Supabase. Se leen desde el archivo env.json con --dart-define-from-file.
+/// Solo se usa la clave PÚBLICA (anon / publishable). Nunca la clave secreta.
+class Env {
+  Env._();
+
+  static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+
+  static bool get isConfigured => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+}
